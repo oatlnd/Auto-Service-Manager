@@ -151,7 +151,9 @@
     "summary": "Summary",
     "onLeave": "On Leave",
     "selectDate": "Select Date",
-    "noRecords": "No attendance records found"
+    "noRecords": "No attendance records found",
+    "newDay": "New Day",
+    "pageRefreshed": "Attendance page refreshed for the new day"
   },
   "validation": {
     "required": "This field is required",

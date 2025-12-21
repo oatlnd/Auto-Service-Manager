@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Clock, Calendar, Users, AlertCircle, Loader2, CheckCircle, XCircle, AlertTriangle, Pencil } from "lucide-react";
@@ -49,10 +49,43 @@ export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState(getSriLankaDateString());
   const [editRecord, setEditRecord] = useState<Attendance | null>(null);
 
+  const lastKnownDateRef = useRef(getSriLankaDateString());
+
+  const checkForDateChange = useCallback(() => {
+    const currentDate = getSriLankaDateString();
+    if (currentDate !== lastKnownDateRef.current) {
+      lastKnownDateRef.current = currentDate;
+      setSelectedDate(currentDate);
+      setEditRecord(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      toast({
+        title: t("attendance.newDay"),
+        description: t("attendance.pageRefreshed"),
+      });
+    }
+  }, [t, toast]);
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(getSriLankaTime()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const dateCheckTimer = setInterval(checkForDateChange, 30000);
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkForDateChange();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    return () => {
+      clearInterval(dateCheckTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [checkForDateChange]);
 
   const today = getSriLankaDateString();
 
