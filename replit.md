@@ -56,6 +56,7 @@ client/src/
 │   ├── service-bays.tsx     # Bay status monitoring
 │   ├── reports.tsx          # Analytics and reports
 │   ├── staff-management.tsx # Staff CRUD (Admin only)
+│   ├── technicians.tsx      # Technician CRUD (Admin only)
 │   └── attendance.tsx       # Attendance tracking
 ├── hooks/           # Custom React hooks
 ├── lib/             # Utilities and API client
@@ -68,7 +69,7 @@ server/
 
 shared/
 ├── schema.ts       # Database schema + Zod validation + TypeScript types
-                    # Includes Staff, Attendance, USER_ROLES, ATTENDANCE_STATUSES
+                    # Includes Staff, Attendance, Technician, USER_ROLES, ATTENDANCE_STATUSES, BAYS
 ```
 
 ## Role-Based Access Control
@@ -86,6 +87,7 @@ shared/
 | Service Bays | Full | Full | Full |
 | Reports | Full | Full | No revenue/avg |
 | Staff Management | CRUD | View only | Hidden |
+| Technicians | CRUD | View only | Hidden |
 | Attendance | Full + history edit | Today only | Hidden |
 
 ## External Dependencies
@@ -120,12 +122,16 @@ shared/
 - Implemented Attendance tracking with today's marking and historical view
 - Created role-based access control using UserRoleContext and X-User-Role header
 - Added role selector dropdown in header for switching between Admin/Manager/Job Card roles
-- Updated sidebar with Admin section containing Staff Management and Attendance pages
+- Updated sidebar with Admin section containing Staff Management, Technicians, and Attendance pages
 - Applied role-based visibility restrictions:
   - Revenue/cost hidden from Job Card role on Dashboard, Reports, and Job Cards pages
   - Admin section hidden from Job Card role
   - Historical attendance modification restricted to Admin only
 - Sample data includes 5 staff members with today's attendance records
+- Added Technicians management page with CRUD operations (Admin only for create/edit/delete)
+- Technicians are bike mechanics separate from Staff (who have system access roles)
+- Added "Wash Bay" as the 6th service bay to the system (BAYS enum updated)
+- Sample data includes 5 technicians with various specializations
 
 ### December 2025 (Initial)
 - Implemented complete Honda Service Center Management System MVP
@@ -153,7 +159,7 @@ shared/
 - Quick status update buttons
 
 ### Service Bays (/service-bays)
-- 5 bay cards showing occupancy status
+- 6 bay cards showing occupancy status (including Wash Bay)
 - Active/Available counts with utilization percentage
 - Detailed view of occupied bays with job information
 
@@ -176,3 +182,10 @@ shared/
 - Historical attendance view with date picker
 - Edit attendance records (today for Manager, any day for Admin)
 - Attendance summary cards (Present, Absent, On Leave, Total)
+
+### Technicians (/technicians) - Admin Section
+- Technician directory with active/inactive status
+- Add/Edit/Delete technicians (Admin only)
+- View technician list (Admin and Manager)
+- Contact information and specialization tracking
+- Active/Inactive/Total summary cards
