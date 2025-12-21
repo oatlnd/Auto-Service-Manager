@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Clock, Calendar, Users, AlertCircle, Loader2, CheckCircle, XCircle, AlertTriangle, Pencil } from "lucide-react";
 import { format } from "date-fns";
+import { formatSriLankaDate, getSriLankaDateString, getSriLankaTimeString, getSriLankaTime } from "@/lib/timezone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,16 +45,16 @@ export default function AttendancePage() {
   const { toast } = useToast();
   const { isAdmin, isManager } = useUserRole();
   const canManageToday = isAdmin || isManager;
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [currentTime, setCurrentTime] = useState(getSriLankaTime());
+  const [selectedDate, setSelectedDate] = useState(getSriLankaDateString());
   const [editRecord, setEditRecord] = useState<Attendance | null>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => setCurrentTime(getSriLankaTime()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = getSriLankaDateString();
 
   const { data: staffList = [] } = useQuery<Staff[]>({
     queryKey: ["/api/staff"],
@@ -147,7 +148,7 @@ export default function AttendancePage() {
                   {format(currentTime, "hh:mm:ss a")}
                 </p>
                 <p className="text-xs text-muted-foreground" data-testid="text-current-date">
-                  {format(currentTime, "EEEE, MMMM d, yyyy")}
+                  {format(currentTime, "EEEE, MMMM d, yyyy")} (Sri Lanka)
                 </p>
               </div>
             </div>
@@ -219,7 +220,7 @@ export default function AttendancePage() {
         <TabsContent value="today" className="mt-4">
           <Card className="border border-card-border">
             <CardHeader>
-              <CardTitle className="text-lg">Mark Attendance - {format(new Date(), "MMMM d, yyyy")}</CardTitle>
+              <CardTitle className="text-lg">Mark Attendance - {formatSriLankaDate(new Date(), "MMMM d, yyyy")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -291,7 +292,7 @@ export default function AttendancePage() {
                                     onClick={() => markAttendanceMutation.mutate({
                                       staffId: staff.id,
                                       status: "Present",
-                                      checkInTime: format(new Date(), "HH:mm"),
+                                      checkInTime: getSriLankaTimeString(),
                                     })}
                                     disabled={markAttendanceMutation.isPending}
                                     data-testid={`button-mark-present-${staff.id}`}
@@ -305,7 +306,7 @@ export default function AttendancePage() {
                                     onClick={() => markAttendanceMutation.mutate({
                                       staffId: staff.id,
                                       status: "Late",
-                                      checkInTime: format(new Date(), "HH:mm"),
+                                      checkInTime: getSriLankaTimeString(),
                                     })}
                                     disabled={markAttendanceMutation.isPending}
                                     data-testid={`button-mark-late-${staff.id}`}
