@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -43,6 +43,9 @@ export const HONDA_MODELS = [
   "Grazia",
 ] as const;
 
+export const USER_ROLES = ["Admin", "Manager", "Job Card"] as const;
+export const ATTENDANCE_STATUSES = ["Present", "Absent", "Late", "Leave"] as const;
+
 export const jobCardSchema = z.object({
   id: z.string(),
   customerName: z.string().min(1, "Customer name is required"),
@@ -81,3 +84,51 @@ export interface BayStatus {
   isOccupied: boolean;
   jobCard?: JobCard;
 }
+
+export const staffSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Name is required"),
+  phone: z.string().min(10, "Valid phone number required"),
+  email: z.string().email().optional().or(z.literal("")),
+  role: z.enum(USER_ROLES),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+});
+
+export const insertStaffSchema = staffSchema.omit({ id: true, createdAt: true });
+
+export type Staff = z.infer<typeof staffSchema>;
+export type InsertStaff = z.infer<typeof insertStaffSchema>;
+
+export const attendanceSchema = z.object({
+  id: z.string(),
+  staffId: z.string(),
+  staffName: z.string(),
+  date: z.string(),
+  status: z.enum(ATTENDANCE_STATUSES),
+  checkInTime: z.string().optional(),
+  checkOutTime: z.string().optional(),
+  notes: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string().optional(),
+});
+
+export const insertAttendanceSchema = z.object({
+  staffId: z.string(),
+  date: z.string(),
+  status: z.enum(ATTENDANCE_STATUSES),
+  checkInTime: z.string().optional(),
+  checkOutTime: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateAttendanceSchema = z.object({
+  status: z.enum(ATTENDANCE_STATUSES).optional(),
+  checkInTime: z.string().optional(),
+  checkOutTime: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type Attendance = z.infer<typeof attendanceSchema>;
+export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
+export type UpdateAttendance = z.infer<typeof updateAttendanceSchema>;

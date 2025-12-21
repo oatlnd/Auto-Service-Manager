@@ -7,6 +7,10 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+function getUserRole(): string {
+  return localStorage.getItem("userRole") || "Admin";
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -14,7 +18,10 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      "X-User-Role": getUserRole(),
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,8 +36,11 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const res = await fetch(queryKey[0] as string, {
       credentials: "include",
+      headers: {
+        "X-User-Role": getUserRole(),
+      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

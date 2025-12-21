@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/contexts/UserRoleContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { JobCard, JOB_STATUSES } from "@shared/schema";
 import { HONDA_MODELS, BAYS, TECHNICIANS, SERVICE_TYPES } from "@shared/schema";

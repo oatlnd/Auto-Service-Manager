@@ -1,27 +1,38 @@
 import { Link, useLocation } from "wouter";
-import { Home, FileText, Wrench, BarChart3, LogOut } from "lucide-react";
+import { Home, FileText, Wrench, BarChart3, Users, Calendar, Settings } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
+import { useUserRole } from "@/contexts/UserRoleContext";
 
-const navItems = [
+const mainNavItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Job Cards", url: "/job-cards", icon: FileText },
   { title: "Service Bays", url: "/service-bays", icon: Wrench },
   { title: "Reports", url: "/reports", icon: BarChart3 },
 ];
 
+const adminNavItems = [
+  { title: "Staff Management", url: "/staff", icon: Users },
+  { title: "Attendance", url: "/attendance", icon: Calendar },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
+  const { isAdmin, isManager } = useUserRole();
+  const canAccessAdmin = isAdmin || isManager;
+
+  const isActive = (url: string) => {
+    return location === url || (url !== "/" && location.startsWith(url));
+  };
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -39,17 +50,41 @@ export function AppSidebar() {
       
       <SidebarContent>
         <SidebarGroup>
+          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
-                const isActive = location === item.url || 
-                  (item.url !== "/" && location.startsWith(item.url));
-                return (
+              {mainNavItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    className={isActive(item.url) ? "bg-primary text-primary-foreground" : ""}
+                  >
+                    <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(" ", "-")}`}>
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {canAccessAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center gap-2">
+              <Settings className="w-3 h-3" />
+              Admin
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminNavItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
-                      isActive={isActive}
-                      className={isActive ? "bg-primary text-primary-foreground" : ""}
+                      isActive={isActive(item.url)}
+                      className={isActive(item.url) ? "bg-primary text-primary-foreground" : ""}
                     >
                       <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(" ", "-")}`}>
                         <item.icon className="w-4 h-4" />
@@ -57,19 +92,12 @@ export function AppSidebar() {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
-
-      <SidebarFooter className="p-4">
-        <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground" data-testid="button-logout">
-          <LogOut className="w-4 h-4" />
-          <span>Logout</span>
-        </Button>
-      </SidebarFooter>
     </Sidebar>
   );
 }

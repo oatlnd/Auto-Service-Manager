@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Briefcase, CheckCircle, Clock, DollarSign, Wrench } from "lucide-react";
+import { Briefcase, CheckCircle, Clock, DollarSign, Wrench, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
 import { Link } from "wouter";
+import { useUserRole } from "@/contexts/UserRoleContext";
 import type { JobCard, DailyStatistics, BayStatus } from "@shared/schema";
 
 export default function Dashboard() {
+  const { canViewRevenue } = useUserRole();
+  
   const { data: stats, isLoading: statsLoading } = useQuery<DailyStatistics>({
     queryKey: ["/api/statistics"],
   });
@@ -61,14 +64,30 @@ export default function Dashboard() {
           isLoading={statsLoading}
           testId="stat-in-progress"
         />
-        <StatCard
-          title="Today's Revenue"
-          value={formatCurrency(stats?.revenue || 0)}
-          icon={DollarSign}
-          iconColor="text-green-600"
-          isLoading={statsLoading}
-          testId="stat-revenue"
-        />
+        {canViewRevenue ? (
+          <StatCard
+            title="Today's Revenue"
+            value={formatCurrency(stats?.revenue || 0)}
+            icon={DollarSign}
+            iconColor="text-green-600"
+            isLoading={statsLoading}
+            testId="stat-revenue"
+          />
+        ) : (
+          <Card className="border border-card-border">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Revenue</p>
+                  <p className="text-xs text-muted-foreground">Admin/Manager only</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

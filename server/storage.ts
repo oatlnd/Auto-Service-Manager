@@ -1,4 +1,8 @@
-import type { JobCard, InsertJobCard, DailyStatistics, BayStatus, BAYS, JOB_STATUSES } from "@shared/schema";
+import type { 
+  JobCard, InsertJobCard, DailyStatistics, BayStatus, 
+  Staff, InsertStaff, Attendance, InsertAttendance, UpdateAttendance,
+  BAYS, JOB_STATUSES 
+} from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -11,19 +15,53 @@ export interface IStorage {
   deleteJobCard(id: string): Promise<boolean>;
   getStatistics(): Promise<DailyStatistics>;
   getBayStatus(): Promise<BayStatus[]>;
+  
+  getStaff(): Promise<Staff[]>;
+  getStaffMember(id: string): Promise<Staff | undefined>;
+  createStaff(data: InsertStaff): Promise<Staff>;
+  updateStaff(id: string, data: Partial<InsertStaff>): Promise<Staff | undefined>;
+  deleteStaff(id: string): Promise<boolean>;
+  
+  getAttendance(date?: string): Promise<Attendance[]>;
+  getAttendanceByStaff(staffId: string): Promise<Attendance[]>;
+  getAttendanceRecord(id: string): Promise<Attendance | undefined>;
+  createAttendance(data: InsertAttendance): Promise<Attendance>;
+  updateAttendance(id: string, data: UpdateAttendance): Promise<Attendance | undefined>;
+  getTodayAttendance(): Promise<Attendance[]>;
 }
 
 export class MemStorage implements IStorage {
   private jobCards: Map<string, JobCard>;
+  private staff: Map<string, Staff>;
+  private attendance: Map<string, Attendance>;
   private jobIdCounter: number;
+  private staffIdCounter: number;
+  private attendanceIdCounter: number;
 
   constructor() {
     this.jobCards = new Map();
+    this.staff = new Map();
+    this.attendance = new Map();
     this.jobIdCounter = 1;
+    this.staffIdCounter = 1;
+    this.attendanceIdCounter = 1;
     this.initializeSampleData();
   }
 
   private initializeSampleData() {
+    const sampleStaff: Omit<Staff, "id" | "createdAt">[] = [
+      { name: "Arun Kumar", phone: "0771234567", email: "arun@hondajaffna.lk", role: "Admin", isActive: true },
+      { name: "Priya Shankar", phone: "0779876543", email: "priya@hondajaffna.lk", role: "Manager", isActive: true },
+      { name: "Ramesh Nair", phone: "0765432109", email: "ramesh@hondajaffna.lk", role: "Job Card", isActive: true },
+      { name: "Suresh Pillai", phone: "0778765432", email: "suresh@hondajaffna.lk", role: "Job Card", isActive: true },
+      { name: "Karthik Rajan", phone: "0761234567", email: "karthik@hondajaffna.lk", role: "Job Card", isActive: true },
+    ];
+
+    sampleStaff.forEach((s) => {
+      const id = `STF${String(this.staffIdCounter++).padStart(3, "0")}`;
+      this.staff.set(id, { ...s, id, createdAt: new Date().toISOString() });
+    });
+
     const sampleJobs: Omit<JobCard, "id">[] = [
       {
         customerName: "Rajesh Kumar",
@@ -84,6 +122,25 @@ export class MemStorage implements IStorage {
     sampleJobs.forEach((job) => {
       const id = `JC${String(this.jobIdCounter++).padStart(3, "0")}`;
       this.jobCards.set(id, { ...job, id });
+    });
+
+    const today = new Date().toISOString().split("T")[0];
+    const staffIds = Array.from(this.staff.keys());
+    staffIds.forEach((staffId, index) => {
+      const staffMember = this.staff.get(staffId)!;
+      const id = `ATT${String(this.attendanceIdCounter++).padStart(5, "0")}`;
+      const statuses: ("Present" | "Late")[] = ["Present", "Present", "Present", "Late", "Present"];
+      this.attendance.set(id, {
+        id,
+        staffId,
+        staffName: staffMember.name,
+        date: today,
+        status: statuses[index] || "Present",
+        checkInTime: index === 3 ? "09:15" : "08:30",
+        checkOutTime: undefined,
+        notes: index === 3 ? "Traffic delay" : undefined,
+        createdAt: new Date().toISOString(),
+      });
     });
   }
 
@@ -213,6 +270,93 @@ export class MemStorage implements IStorage {
         jobCard: activeJob,
       };
     });
+  }
+
+  async getStaff(): Promise<Staff[]> {
+    return Array.from(this.staff.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async getStaffMember(id: string): Promise<Staff | undefined> {
+    return this.staff.get(id);
+  }
+
+  async createStaff(data: InsertStaff): Promise<Staff> {
+    const id = `STF${String(this.staffIdCounter++).padStart(3, "0")}`;
+    const staff: Staff = {
+      ...data,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+    this.staff.set(id, staff);
+    return staff;
+  }
+
+  async updateStaff(id: string, data: Partial<InsertStaff>): Promise<Staff | undefined> {
+    const existing = this.staff.get(id);
+    if (!existing) return undefined;
+
+    const updated: Staff = {
+      ...existing,
+      ...data,
+    };
+    this.staff.set(id, updated);
+    return updated;
+  }
+
+  async deleteStaff(id: string): Promise<boolean> {
+    return this.staff.delete(id);
+  }
+
+  async getAttendance(date?: string): Promise<Attendance[]> {
+    const records = Array.from(this.attendance.values());
+    if (date) {
+      return records.filter((a) => a.date === date);
+    }
+    return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  async getAttendanceByStaff(staffId: string): Promise<Attendance[]> {
+    return Array.from(this.attendance.values())
+      .filter((a) => a.staffId === staffId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  async getAttendanceRecord(id: string): Promise<Attendance | undefined> {
+    return this.attendance.get(id);
+  }
+
+  async createAttendance(data: InsertAttendance): Promise<Attendance> {
+    const id = `ATT${String(this.attendanceIdCounter++).padStart(5, "0")}`;
+    const staffMember = await this.getStaffMember(data.staffId);
+    
+    const attendance: Attendance = {
+      ...data,
+      id,
+      staffName: staffMember?.name || "Unknown",
+      createdAt: new Date().toISOString(),
+    };
+    this.attendance.set(id, attendance);
+    return attendance;
+  }
+
+  async updateAttendance(id: string, data: UpdateAttendance): Promise<Attendance | undefined> {
+    const existing = this.attendance.get(id);
+    if (!existing) return undefined;
+
+    const updated: Attendance = {
+      ...existing,
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    this.attendance.set(id, updated);
+    return updated;
+  }
+
+  async getTodayAttendance(): Promise<Attendance[]> {
+    const today = new Date().toISOString().split("T")[0];
+    return this.getAttendance(today);
   }
 }
 

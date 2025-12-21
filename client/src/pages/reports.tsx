@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileText, CheckCircle, DollarSign, TrendingUp } from "lucide-react";
+import { FileText, CheckCircle, DollarSign, TrendingUp, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/stat-card";
+import { useUserRole } from "@/contexts/UserRoleContext";
 import type { JobCard } from "@shared/schema";
 import { SERVICE_TYPES, JOB_STATUSES, TECHNICIANS, HONDA_MODELS } from "@shared/schema";
 
@@ -19,6 +20,8 @@ interface ReportData {
 }
 
 export default function Reports() {
+  const { canViewRevenue } = useUserRole();
+  
   const { data: jobCards = [], isLoading } = useQuery<JobCard[]>({
     queryKey: ["/api/job-cards"],
   });
@@ -87,22 +90,54 @@ export default function Reports() {
           isLoading={isLoading}
           testId="stat-completed-jobs"
         />
-        <StatCard
-          title="Total Revenue"
-          value={formatCurrency(reportData.totalRevenue)}
-          icon={DollarSign}
-          iconColor="text-green-600"
-          isLoading={isLoading}
-          testId="stat-total-revenue"
-        />
-        <StatCard
-          title="Avg. Job Value"
-          value={formatCurrency(reportData.averageJobValue)}
-          icon={TrendingUp}
-          iconColor="text-blue-600"
-          isLoading={isLoading}
-          testId="stat-avg-job-value"
-        />
+        {canViewRevenue ? (
+          <StatCard
+            title="Total Revenue"
+            value={formatCurrency(reportData.totalRevenue)}
+            icon={DollarSign}
+            iconColor="text-green-600"
+            isLoading={isLoading}
+            testId="stat-total-revenue"
+          />
+        ) : (
+          <Card className="border border-card-border">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Revenue</p>
+                  <p className="text-xs text-muted-foreground">Admin/Manager only</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {canViewRevenue ? (
+          <StatCard
+            title="Avg. Job Value"
+            value={formatCurrency(reportData.averageJobValue)}
+            icon={TrendingUp}
+            iconColor="text-blue-600"
+            isLoading={isLoading}
+            testId="stat-avg-job-value"
+          />
+        ) : (
+          <Card className="border border-card-border">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Avg. Value</p>
+                  <p className="text-xs text-muted-foreground">Admin/Manager only</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
