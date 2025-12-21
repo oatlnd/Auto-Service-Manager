@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { UserRoleProvider, useUserRole } from "@/contexts/UserRoleContext";
 import { RoleSelector } from "@/components/role-selector";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import Dashboard from "@/pages/dashboard";
 import JobCards from "@/pages/job-cards";
 import ServiceBays from "@/pages/service-bays";
@@ -48,6 +49,7 @@ function AppContent() {
           <header className="flex items-center gap-2 h-14 px-4 border-b border-border shrink-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex-1" />
+            <LanguageSwitcher />
             <RoleSelector />
           </header>
           <main className="flex-1 overflow-auto">
