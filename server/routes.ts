@@ -20,11 +20,11 @@ async function getSessionFromRequest(req: Request): Promise<Session | undefined>
   return storage.getSession(sessionId);
 }
 
-function getRoleFromRequest(req: Request): string {
+function getRoleFromSession(req: Request): string | null {
   if (req.session) {
     return req.session.user.role;
   }
-  return (req.headers["x-user-role"] as string) || "Job Card";
+  return null;
 }
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -36,7 +36,10 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 function requireRole(...allowedRoles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const role = getRoleFromRequest(req);
+    if (!req.session) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const role = req.session.user.role;
     if (allowedRoles.includes(role)) {
       next();
     } else {
@@ -105,9 +108,9 @@ export async function registerRoutes(
     res.json(req.session.user);
   });
 
-  app.get("/api/job-cards", async (req, res) => {
+  app.get("/api/job-cards", requireAuth, async (req, res) => {
     try {
-      const role = getRoleFromRequest(req);
+      const role = getRoleFromSession(req) || "Job Card";
       const jobCards = await storage.getJobCards();
       
       if (!canViewRevenue(role)) {
@@ -122,9 +125,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/job-cards/recent", async (req, res) => {
+  app.get("/api/job-cards/recent", requireAuth, async (req, res) => {
     try {
-      const role = getRoleFromRequest(req);
+      const role = getRoleFromSession(req) || "Job Card";
       const limit = parseInt(req.query.limit as string) || 5;
       const jobCards = await storage.getRecentJobCards(limit);
       
@@ -140,9 +143,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/job-cards/:id", async (req, res) => {
+  app.get("/api/job-cards/:id", requireAuth, async (req, res) => {
     try {
-      const role = getRoleFromRequest(req);
+      const role = getRoleFromSession(req) || "Job Card";
       const jobCard = await storage.getJobCard(req.params.id);
       if (!jobCard) {
         return res.status(404).json({ error: "Job card not found" });
@@ -160,7 +163,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/job-cards", async (req, res) => {
+  app.post("/api/job-cards", requireAuth, async (req, res) => {
     try {
       const parsed = insertJobCardSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -174,7 +177,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/job-cards/:id", async (req, res) => {
+  app.patch("/api/job-cards/:id", requireAuth, async (req, res) => {
     try {
       const jobCard = await storage.updateJobCard(req.params.id, req.body);
       if (!jobCard) {
@@ -187,7 +190,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/job-cards/:id/status", async (req, res) => {
+  app.patch("/api/job-cards/:id/status", requireAuth, async (req, res) => {
     try {
       const statusSchema = z.object({
         status: z.enum(JOB_STATUSES),
@@ -207,7 +210,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/job-cards/:id", async (req, res) => {
+  app.delete("/api/job-cards/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteJobCard(req.params.id);
       if (!deleted) {
@@ -220,9 +223,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/statistics", async (req, res) => {
+  app.get("/api/statistics", requireAuth, async (req, res) => {
     try {
-      const role = getRoleFromRequest(req);
+      const role = getRoleFromSession(req) || "Job Card";
       const stats = await storage.getStatistics();
       
       if (!canViewRevenue(role)) {
@@ -237,7 +240,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/bays/status", async (req, res) => {
+  app.get("/api/bays/status", requireAuth, async (req, res) => {
     try {
       const bayStatus = await storage.getBayStatus();
       res.json(bayStatus);
@@ -345,14 +348,9 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/attendance/:id", async (req, res) => {
+  app.patch("/api/attendance/:id", requireRole("Admin", "Manager"), async (req, res) => {
     try {
-      const role = getRoleFromRequest(req);
-      
-      // Only Admin and Manager can modify attendance
-      if (role !== "Admin" && role !== "Manager") {
-        return res.status(403).json({ error: "Access denied" });
-      }
+      const role = getRoleFromSession(req) || "Job Card";
       
       const record = await storage.getAttendanceRecord(req.params.id);
       
@@ -363,7 +361,6 @@ export async function registerRoutes(
       const today = new Date().toISOString().split("T")[0];
       const isHistorical = record.date !== today;
 
-      // Only Admin can modify historical (previous day) attendance
       if (isHistorical && role !== "Admin") {
         return res.status(403).json({ error: "Only Admin can modify previous day attendance" });
       }
@@ -381,11 +378,11 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/roles", (req, res) => {
+  app.get("/api/roles", requireAuth, (req, res) => {
     res.json(USER_ROLES);
   });
 
-  app.get("/api/technicians", async (req, res) => {
+  app.get("/api/technicians", requireAuth, async (req, res) => {
     try {
       const technicians = await storage.getTechnicians();
       res.json(technicians);
@@ -395,7 +392,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/technicians/:id", async (req, res) => {
+  app.get("/api/technicians/:id", requireAuth, async (req, res) => {
     try {
       const technician = await storage.getTechnician(req.params.id);
       if (!technician) {
