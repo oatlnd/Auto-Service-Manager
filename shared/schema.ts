@@ -31,7 +31,7 @@ export type LoginCredentials = z.infer<typeof loginSchema>;
 
 export const SERVICE_TYPES = ["Regular Service", "Repair", "Premium Service"] as const;
 export const JOB_STATUSES = ["Pending", "In Progress", "Quality Check", "Completed"] as const;
-export const BAYS = ["Pradeepan", "Bay 2", "Bay 3", "Bay 4", "Bay 5", "Wash Bay"] as const;
+export const BAYS = ["Bay 1", "Bay 2", "Bay 3", "Bay 4", "Bay 5", "Wash Bay"] as const;
 export const TECHNICIANS = ["Technician 1", "Technician 2", "Technician 3", "Technician 4", "Senior Technician"] as const;
 
 export const HONDA_MODELS = [
