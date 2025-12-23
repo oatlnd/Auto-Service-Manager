@@ -102,7 +102,7 @@ export class MemStorage implements IStorage {
         serviceType: "Regular Service",
         status: "In Progress",
         assignedTo: "Technician 1",
-        bay: "Bay 1",
+        bay: "Pradeepan",
         estimatedTime: "45 mins",
         cost: 3500,
         repairDetails: "Oil change, filter replacement, chain adjustment",
@@ -312,7 +312,7 @@ export class MemStorage implements IStorage {
   }
 
   async getBayStatus(): Promise<BayStatus[]> {
-    const bays: (typeof BAYS[number])[] = ["Bay 1", "Bay 2", "Bay 3", "Bay 4", "Bay 5", "Wash Bay"];
+    const bays: (typeof BAYS[number])[] = BAYS.slice();
     const jobs = Array.from(this.jobCards.values());
 
     return bays.map((bay) => {
