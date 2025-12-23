@@ -102,7 +102,7 @@ export class MemStorage implements IStorage {
         serviceType: "Regular Service",
         status: "In Progress",
         assignedTo: "Technician 1",
-        bay: "Pradeepan",
+        bay: "Bay 1",
         estimatedTime: "45 mins",
         cost: 3500,
         repairDetails: "Oil change, filter replacement, chain adjustment",
