@@ -72,7 +72,7 @@ const initialFormData: FormData = {
   odometer: 0,
   serviceType: "Regular Service",
   status: "Pending",
-  bay: "Bay 1",
+  bay: "Pradeepan",
   assignedTo: "Technician 1",
   cost: 0,
   estimatedTime: "",
