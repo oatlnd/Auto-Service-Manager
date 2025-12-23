@@ -85,14 +85,15 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  const listenOptions = {
+    port,
+    host: "0.0.0.0" as const,
+    // Some environments (e.g. macOS sandboxed shells) don't support reusePort,
+    // so gate it behind an opt-in env flag.
+    ...(process.env.REUSE_PORT === "true" ? { reusePort: true } : {}),
+  };
+
+  httpServer.listen(listenOptions, () => {
+    log(`serving on port ${port}`);
+  });
 })();
