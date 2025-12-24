@@ -69,19 +69,33 @@ export default function Technicians() {
   // State Management
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [deleteTechnicianId, setDeleteTechnicianId] = useState<number | null>(null);
+  const [deleteTechnicianId, setDeleteTechnicianId] = useState<string | null>(null);
   const [formData, setFormData] = useState<TechnicianFormData>(initialFormData);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Data Fetching
-  const { data: technicianList = [], isLoading, error } = useQuery<Technician[]>({
+  const { data: technicianList = [], isLoading, error, refetch } = useQuery<Technician[]>({
     queryKey: ["/api/technicians"],
+    retry: (failureCount, error: any) => {
+      // Don't retry on 401 (authentication errors)
+      if (error?.message?.includes("401") || error?.message?.includes("Authentication")) {
+        return false;
+      }
+      return failureCount < 1;
+    },
   });
 
   // Mutations
   const createMutation = useMutation({
     mutationFn: async (data: TechnicianFormData) => {
-      return apiRequest("POST", "/api/technicians", data);
+      // Map skill to specialization for API
+      const apiData = {
+        name: data.name,
+        phone: data.phone,
+        specialization: data.skill,
+        isActive: data.isActive,
+      };
+      return apiRequest("POST", "/api/technicians", apiData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/technicians"] });
@@ -89,21 +103,35 @@ export default function Technicians() {
       setFormData(initialFormData);
       toast({ title: "Success", description: "Technician added to the directory." });
     },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to add technician. Please try again.", variant: "destructive" });
+    },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<TechnicianFormData> }) => {
-      return apiRequest("PATCH", `/api/technicians/${id}`, data);
+    mutationFn: async ({ id, data }: { id: string; data: Partial<TechnicianFormData> }) => {
+      // Map skill to specialization for API
+      const apiData: any = {};
+      if (data.name !== undefined) apiData.name = data.name;
+      if (data.phone !== undefined) apiData.phone = data.phone;
+      if (data.skill !== undefined) apiData.specialization = data.skill;
+      if (data.isActive !== undefined) apiData.isActive = data.isActive;
+      return apiRequest("PATCH", `/api/technicians/${id}`, apiData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/technicians"] });
       setIsEditOpen(false);
+      setFormData(initialFormData);
+      setEditingId(null);
       toast({ title: "Success", description: "Technician details updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update technician. Please try again.", variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       return apiRequest("DELETE", `/api/technicians/${id}`);
     },
     onSuccess: () => {
@@ -111,17 +139,36 @@ export default function Technicians() {
       setDeleteTechnicianId(null);
       toast({ title: "Deleted", description: "Technician removed." });
     },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete technician. Please try again.", variant: "destructive" });
+    },
   });
 
   const activeCount = technicianList.filter((t) => t.isActive).length;
 
   if (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const isAuthError = errorMessage.includes("401") || errorMessage.includes("Authentication");
     return (
       <div className="p-6">
         <Card className="border-destructive">
-          <CardContent className="pt-6 flex items-center gap-2 text-destructive">
-            <AlertCircle className="w-5 h-5" />
-            <p>Error loading technician records. Please try again.</p>
+          <CardContent className="pt-6 flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="w-5 h-5" />
+              <p>
+                {isAuthError 
+                  ? "Authentication required. Please log in again." 
+                  : "Error loading technician records. Please try again."}
+              </p>
+            </div>
+            {process.env.NODE_ENV === "development" && (
+              <p className="text-xs text-muted-foreground">{errorMessage}</p>
+            )}
+            {!isAuthError && (
+              <Button onClick={() => refetch()} variant="outline" size="sm" className="w-fit">
+                Retry
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -180,6 +227,12 @@ export default function Technicians() {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={6}><Skeleton className="h-20 w-full" /></TableCell></TableRow>
+              ) : technicianList.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={isAdmin ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    No technicians found. {isAdmin && "Add your first technician to get started."}
+                  </TableCell>
+                </TableRow>
               ) : (
                 technicianList.map((tech) => (
                   <TableRow key={tech.id}>
@@ -188,7 +241,7 @@ export default function Technicians() {
                     <TableCell>{tech.phone}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-primary/5">
-                        {tech.skill}
+                        {tech.specialization || "N/A"}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -205,7 +258,25 @@ export default function Technicians() {
                           size="icon" 
                           onClick={() => {
                             setEditingId(tech.id);
-                            setFormData({ name: tech.name, phone: tech.phone, skill: tech.skill as any, isActive: tech.isActive });
+                            // Map specialization back to skill for form
+                            // Default to "Mechanic" if specialization doesn't match expected values
+                            let skill: "Mechanic" | "Repairer" | "Asst. Mechanic" = "Mechanic";
+                            if (tech.specialization) {
+                              const spec = tech.specialization.toLowerCase();
+                              if (spec.includes("repairer") || spec.includes("repair")) {
+                                skill = "Repairer";
+                              } else if (spec.includes("asst") || spec.includes("assistant")) {
+                                skill = "Asst. Mechanic";
+                              } else {
+                                skill = "Mechanic";
+                              }
+                            }
+                            setFormData({ 
+                              name: tech.name, 
+                              phone: tech.phone, 
+                              skill: skill, 
+                              isActive: tech.isActive 
+                            });
                             setIsEditOpen(true);
                           }}
                         >
@@ -225,7 +296,14 @@ export default function Technicians() {
       </Card>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={isCreateOpen || isEditOpen} onOpenChange={(open) => { if (!open) { setIsCreateOpen(false); setIsEditOpen(false); } }}>
+      <Dialog open={isCreateOpen || isEditOpen} onOpenChange={(open) => { 
+        if (!open) { 
+          setIsCreateOpen(false); 
+          setIsEditOpen(false); 
+          setFormData(initialFormData);
+          setEditingId(null);
+        } 
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{isEditOpen ? "Update Staff Member" : "Register New Technician"}</DialogTitle>
@@ -275,10 +353,10 @@ export default function Technicians() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsCreateOpen(false); setIsEditOpen(false); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setIsCreateOpen(false); setIsEditOpen(false); setFormData(initialFormData); setEditingId(null); }}>Cancel</Button>
             <Button 
               onClick={() => isEditOpen ? updateMutation.mutate({ id: editingId!, data: formData }) : createMutation.mutate(formData)}
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={createMutation.isPending || updateMutation.isPending || !formData.name.trim() || !formData.phone.trim()}
             >
               {isEditOpen ? "Save Changes" : "Register Staff"}
             </Button>
