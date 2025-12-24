@@ -74,8 +74,15 @@ export default function Technicians() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Data Fetching
-  const { data: technicianList = [], isLoading, error } = useQuery<Technician[]>({
+  const { data: technicianList = [], isLoading, error, refetch } = useQuery<Technician[]>({
     queryKey: ["/api/technicians"],
+    retry: (failureCount, error: any) => {
+      // Don't retry on 401 (authentication errors)
+      if (error?.message?.includes("401") || error?.message?.includes("Authentication")) {
+        return false;
+      }
+      return failureCount < 1;
+    },
   });
 
   // Mutations
@@ -140,12 +147,28 @@ export default function Technicians() {
   const activeCount = technicianList.filter((t) => t.isActive).length;
 
   if (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const isAuthError = errorMessage.includes("401") || errorMessage.includes("Authentication");
     return (
       <div className="p-6">
         <Card className="border-destructive">
-          <CardContent className="pt-6 flex items-center gap-2 text-destructive">
-            <AlertCircle className="w-5 h-5" />
-            <p>Error loading technician records. Please try again.</p>
+          <CardContent className="pt-6 flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="w-5 h-5" />
+              <p>
+                {isAuthError 
+                  ? "Authentication required. Please log in again." 
+                  : "Error loading technician records. Please try again."}
+              </p>
+            </div>
+            {process.env.NODE_ENV === "development" && (
+              <p className="text-xs text-muted-foreground">{errorMessage}</p>
+            )}
+            {!isAuthError && (
+              <Button onClick={() => refetch()} variant="outline" size="sm" className="w-fit">
+                Retry
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
